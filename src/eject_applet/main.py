@@ -125,6 +125,28 @@ class EjectApplet(Gtk.StatusIcon):
 
 def main():
     try:
+        # Parsing options and arguments
+        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
+    except getopt.GetoptError as e:
+        print("[ERROR]", e)
+        sys.exit(2)
+
+    # Handling options
+    for o, a in opts:
+        if o in ["-h", "--help"]:
+            f = open(path.dirname(__file__) + "/data/help.txt", "r")
+            print(f.read())
+            f.close()
+            sys.exit()
+        elif o in ["-v", "--version"]:
+            print("eject-applet", metadata.version("eject-applet"))
+            sys.exit()
+
+    # Handling arguments (not supported)
+    for a in args:
+        print("[WARNING] Unknown argument:", a)
+
+    try:
         EjectApplet()
         Gtk.main()
     except KeyboardInterrupt:
