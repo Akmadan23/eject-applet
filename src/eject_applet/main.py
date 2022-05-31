@@ -38,11 +38,6 @@ class EjectApplet(Gtk.StatusIcon):
             self.monitor.connect("volume-added", on_volume_added)
             self.monitor.connect("volume-removed", on_volume_removed)
 
-    def new_menu_item(self, label, callback, *args):
-        item = Gtk.MenuItem(label = label)
-        item.connect("activate", callback, *args)
-        return item
-
     def on_left_click(self, icon):
         # Defines if a volume is internal
         def is_internal(volume):
@@ -92,6 +87,11 @@ class EjectApplet(Gtk.StatusIcon):
         menu.show_all()
         menu.popup_at_pointer()
 
+    def new_menu_item(self, label, callback, *args):
+        item = Gtk.MenuItem(label = label)
+        item.connect("activate", callback, *args)
+        return item
+
     def mount(self, item, volume, callback = None):
         volume.mount(0, None, None, callback)
 
@@ -119,8 +119,7 @@ class EjectApplet(Gtk.StatusIcon):
             print(f"Opening volume: {volume_name} ({drive_name})")
 
         # TODO: fork the application and to keep it alive when eject-applet is killed
-        volume_uri = volume.get_mount().get_root().get_uri()
-        sp.Popen(["xdg-open", volume_uri], shell = True)
+        sp.Popen(["xdg-open", volume.get_mount().get_root().get_uri()])
 
     def show_about_dialog(self, widget):
         dialog = Gtk.AboutDialog()
