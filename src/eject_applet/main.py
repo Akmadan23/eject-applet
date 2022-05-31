@@ -11,7 +11,10 @@ import warnings
 warnings.filterwarnings("ignore", category = DeprecationWarning)
 
 class EjectApplet(Gtk.StatusIcon):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        # Importing log flag to object
+        self.log = kwargs["log"]
+
         # Initializing the applet itself
         super().__init__(title = "Eject applet")
         self.set_from_icon_name("drive-harddisk-usb-symbolic")
@@ -20,23 +23,25 @@ class EjectApplet(Gtk.StatusIcon):
 
         # Initializing the volume monitor
         self.monitor = Gio.VolumeMonitor.get()
-        self.monitor.connect("volume-added", self.on_volume_added)
-        self.monitor.connect("volume-removed", self.on_volume_removed)
+
+        if self.log:
+            def on_volume_added(self, monitor, volume):
+                volume_name = volume.get_name()
+                drive_name = volume.get_drive().get_name()
+                print(f"New volume: {volume_name} ({drive_name})")
+
+            def on_volume_removed(self, monitor, volume):
+                volume_name = volume.get_name()
+                drive_name = volume.get_drive().get_name()
+                print(f"Volume removed: {volume_name} ({drive_name})")
+
+            self.monitor.connect("volume-added", on_volume_added)
+            self.monitor.connect("volume-removed", on_volume_removed)
 
     def new_menu_item(self, label, callback, *args):
         item = Gtk.MenuItem(label = label)
         item.connect("activate", callback, *args)
         return item
-
-    def on_volume_added(self, monitor, volume):
-        volume_name = volume.get_name()
-        drive_name = volume.get_drive().get_name()
-        print(f"New volume: {volume_name} ({drive_name})")
-
-    def on_volume_removed(self, monitor, volume):
-        volume_name = volume.get_name()
-        drive_name = volume.get_drive().get_name()
-        print(f"Volume removed: {volume_name} ({drive_name})")
 
     def on_left_click(self, icon):
         # Defines if a volume is internal
@@ -48,8 +53,10 @@ class EjectApplet(Gtk.StatusIcon):
         menu = Gtk.Menu()
 
         for volume in self.monitor.get_volumes():
-            for i in volume.enumerate_identifiers():
-                print(i, ": ", volume.get_identifier(i), sep = "")
+            if self.log:
+                print("\n", volume)
+                for i in volume.enumerate_identifiers():
+                    print(f"\t{i}:", volume.get_identifier(i), sep = "")
 
             # If it's an internal volume do not create a menu item
             if is_internal(volume):
@@ -87,28 +94,33 @@ class EjectApplet(Gtk.StatusIcon):
 
     def mount(self, item, volume, callback = None):
         volume.mount(0, None, None, callback)
-        volume_name = volume.get_name()
-        drive_name = volume.get_drive().get_name()
-        print(f"Mounting volume: {volume_name} ({drive_name})")
+
+        if self.log:
+            volume_name = volume.get_name()
+            drive_name = volume.get_drive().get_name()
+            print(f"Mounting volume: {volume_name} ({drive_name})")
 
     def unmount(self, item, volume):
         volume.get_mount().unmount(0)
-        volume_name = volume.get_name()
-        drive_name = volume.get_drive().get_name()
-        print(f"Unmounting volume: {volume_name} ({drive_name})")
+
+        if self.log:
+            volume_name = volume.get_name()
+            drive_name = volume.get_drive().get_name()
+            print(f"Unmounting volume: {volume_name} ({drive_name})")
 
     def open_volume(self, item, volume):
         # If the function is a callback from volume.mount(), fix parameters
         if type(volume) is Gio.Task:
             volume = item
 
-        volume_name = volume.get_name()
-        drive_name = volume.get_drive().get_name()
-        print(f"Opening volume: {volume_name} ({drive_name})")
+        if self.log:
+            volume_name = volume.get_name()
+            drive_name = volume.get_drive().get_name()
+            print(f"Opening volume: {volume_name} ({drive_name})")
 
         # TODO: fork the application and to keep it alive when eject-applet is killed
         volume_uri = volume.get_mount().get_root().get_uri()
-        sp.run(["xdg-open", volume_uri])
+        sp.Popen(["xdg-open", volume_uri], shell = True)
 
     def show_about_dialog(self, widget):
         dialog = Gtk.AboutDialog()
@@ -124,9 +136,12 @@ class EjectApplet(Gtk.StatusIcon):
         dialog.destroy()
 
 def main():
+    # By default log is disabled
+    log = 0
+
     try:
         # Parsing options and arguments
-        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
+        opts, args = getopt.getopt(sys.argv[1:], "hvl", ["help", "version", "log"])
     except getopt.GetoptError as e:
         print("[ERROR]", e)
         sys.exit(2)
@@ -141,13 +156,15 @@ def main():
         elif o in ["-v", "--version"]:
             print("eject-applet", metadata.version("eject-applet"))
             sys.exit()
+        elif o in ["-l", "--log"]:
+            log = 1
 
     # Handling arguments (not supported)
     for a in args:
         print("[WARNING] Unknown argument:", a)
 
     try:
-        EjectApplet()
+        EjectApplet(log = log)
         Gtk.main()
     except KeyboardInterrupt:
         print("\n[WARNING] Interrupted by user.")

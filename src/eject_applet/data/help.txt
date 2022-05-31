@@ -3,3 +3,4 @@ Usage: eject-applet [options]
 Options:
     -h, --help                  Show this help message
     -v, --version               Show version number
+    -l, --log                   Print to stdout details on what is going on
