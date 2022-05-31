@@ -1,0 +1,6 @@
+dist/
+src/eject_applet.egg-info/
+src/eject_applet/*
+!src/eject_applet/__init__.py
+!src/eject_applet/main.py
+!src/eject_applet/data/
